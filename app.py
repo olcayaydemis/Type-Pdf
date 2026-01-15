@@ -7,12 +7,14 @@ from pptx import Presentation
 from PIL import Image
 import os
 import subprocess
-import pythoncom
 import zipfile
 import io
 import platform # İşletim sistemini anlamak için
 import shutil   # Linux'ta komut kontrolü için
 from PyPDF2 import PdfMerger, PdfReader, PdfWriter
+
+# NOT: pythoncom ve docx2pdf kütüphaneleri Linux'ta çalışmadığı için kaldırıldı.
+# Artık LibreOffice kullanıyoruz, onlara ihtiyacımız yok.
 
 # ========================================================
 #                  AYARLAR VE SABİTLER (CROSS-PLATFORM)
@@ -26,22 +28,21 @@ if platform.system() == "Windows":
     LIBREOFFICE_PATH = r'C:\Program Files\LibreOffice\program\soffice.exe'
 else:
     # STREAMLIT CLOUD (LINUX) YOLLARI
-    # Linux'ta bu araçlar doğrudan komut satırından çağrılır, exe uzantısı yoktur.
     TESSERACT_PATH = "tesseract"
-    POPPLER_PATH = None # Linux'ta Poppler genelde PATH'e eklenir, yol belirtmeye gerek kalmaz
+    POPPLER_PATH = None 
     LIBREOFFICE_PATH = "soffice"
 
 # Tesseract yolunu ata
 pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
 
-st.set_page_config(page_title="Type-Pdf", layout="centered", page_icon="")
-st.title("Type-Pdf")
+st.set_page_config(page_title="Mühendislik Dönüştürücü Pro", layout="centered", page_icon="🛠️")
+st.title("🛠️ Ultimate Belge İstasyonu")
 
 # ========================================================
 #                  MENÜ SİSTEMİ
 # ========================================================
 
-st.sidebar.header(" Menü Yönetimi")
+st.sidebar.header("📂 Menü Yönetimi")
 
 kategori = st.sidebar.selectbox(
     "Kategori Seçiniz:",
@@ -53,7 +54,7 @@ kategori = st.sidebar.selectbox(
 secim = ""
 
 if kategori == "Dönüştürme İşlemleri (Converter)":
-    st.sidebar.subheader(" Dönüştürme Modları")
+    st.sidebar.subheader("🔄 Dönüştürme Modları")
     secim = st.sidebar.radio("İşlem Seçiniz:", 
         ["PDF -> Word (Metin)", 
          "Word -> PDF (LibreOffice)",
@@ -67,7 +68,7 @@ if kategori == "Dönüştürme İşlemleri (Converter)":
          "OCR: Taranmış PDF -> Word"])
 
 elif kategori == "PDF Araçları (Tools)":
-    st.sidebar.subheader(" PDF Araçları")
+    st.sidebar.subheader("🔧 PDF Araçları")
     secim = st.sidebar.radio("Araç Seçiniz:", 
         ["PDF Birleştir (Merge)", 
          "PDF Böl (Split)", 
@@ -83,7 +84,7 @@ elif kategori == "Sistem ve Yardım (System Info)":
 # ========================================================
 
 if secim == "Sistem Durumu":
-    st.header(" Sistem Sağlık ve Bağımlılık Kontrolü")
+    st.header("🏥 Sistem Sağlık ve Bağımlılık Kontrolü")
     st.info("Bu panel, uygulamanın çalışması için gerekli harici araçların durumunu gösterir.")
     
     col1, col2, col3 = st.columns(3)
@@ -106,7 +107,6 @@ if secim == "Sistem Durumu":
 
     # 2. Poppler Kontrolü
     with col2:
-        # Linux'ta poppler-utils pdftoppm komutuyla kontrol edilir
         if platform.system() == "Windows":
             status = os.path.exists(POPPLER_PATH)
         else:
@@ -129,7 +129,7 @@ if secim == "Sistem Durumu":
             st.caption("Durum: **Bulunamadı!**")
 
     st.divider()
-    st.subheader(" Proje Hakkında")
+    st.subheader("👨‍💻 Proje Hakkında")
     st.write(f"""
     **Çalışma Ortamı:** {platform.system()}
     
@@ -141,7 +141,7 @@ if secim == "Sistem Durumu":
 # ========================================================
 
 elif secim == "PDF Birleştir (Merge)":
-    st.header(" PDF Dosyalarını Birleştir")
+    st.header("🖇️ PDF Dosyalarını Birleştir")
     uploaded_pdfs = st.file_uploader("PDF'leri Seçin", type="pdf", accept_multiple_files=True, key="merge")
     if uploaded_pdfs and st.button("Birleştir"):
         with st.spinner('Birleştiriliyor...'):
@@ -156,7 +156,7 @@ elif secim == "PDF Birleştir (Merge)":
             except Exception as e: st.error(f"Hata: {e}")
 
 elif secim == "PDF Böl (Split)":
-    st.header(" PDF Dosyasını Böl")
+    st.header("✂️ PDF Dosyasını Böl")
     up_split = st.file_uploader("PDF Yükle", type="pdf", key="split")
     if up_split:
         reader = PdfReader(up_split)
@@ -176,26 +176,26 @@ elif secim == "PDF Böl (Split)":
                 st.success("Bitti!")
 
 elif secim == "PDF Sıkıştırma (Optimizer)":
-    st.header(" PDF Boyut Küçültme")
+    st.header("🗜️ PDF Boyut Küçültme")
     st.info("PDF içindeki gereksiz boşlukları ve akışları temizler.")
     up_opt = st.file_uploader("PDF Yükle", type="pdf", key="compress")
     if up_opt:
         original_size = up_opt.size / 1024
-        st.write(f" **Orijinal Boyut:** {original_size:.2f} KB")
+        st.write(f"📂 **Orijinal Boyut:** {original_size:.2f} KB")
         if st.button("Sıkıştır"):
             with st.spinner("Optimize ediliyor..."):
                 try:
                     reader = PdfReader(up_opt)
                     writer = PdfWriter()
                     for page in reader.pages:
-                        page.compress_content_streams() # Sadece içerik akışını sıkıştır
+                        page.compress_content_streams() 
                         writer.add_page(page)
                     
                     buf = io.BytesIO()
                     writer.write(buf)
                     new_size = buf.getbuffer().nbytes / 1024
                     ratio = ((original_size - new_size) / original_size) * 100
-                    st.write(f"**Yeni Boyut:** {new_size:.2f} KB")
+                    st.write(f"📦 **Yeni Boyut:** {new_size:.2f} KB")
                     if new_size < original_size:
                         st.success(f"Başarılı! %{ratio:.1f} oranında sıkıştı.")
                     else: st.info("Dosya zaten optimize edilmiş.")
@@ -203,7 +203,7 @@ elif secim == "PDF Sıkıştırma (Optimizer)":
                 except Exception as e: st.error(f"Hata: {e}")
 
 elif secim == "PDF Şifrele (Lock)":
-    st.header(" PDF Şifreleme")
+    st.header("🔒 PDF Şifreleme")
     up_lock = st.file_uploader("PDF Yükle", type="pdf", key="lock")
     if up_lock:
         pwd = st.text_input("Şifre", type="password")
@@ -220,7 +220,7 @@ elif secim == "PDF Şifrele (Lock)":
             else: st.warning("Şifre giriniz.")
 
 elif secim == "PDF Metadata Temizle (Privacy)":
-    st.header(" PDF Metadata Temizleme")
+    st.header("🕵️ PDF Metadata Temizleme")
     up_meta = st.file_uploader("PDF Yükle", type="pdf", key="meta")
     if up_meta:
         reader = PdfReader(up_meta)
@@ -238,7 +238,7 @@ elif secim == "PDF Metadata Temizle (Privacy)":
 # ========================================================
 
 elif secim == "PDF -> Word (Metin)":
-    st.header(" PDF -> Word")
+    st.header("📄 PDF -> Word")
     up = st.file_uploader("PDF", type="pdf", key="p2w")
     if up and st.button("Çevir"):
         with st.spinner('...'):
@@ -252,7 +252,7 @@ elif secim == "PDF -> Word (Metin)":
             except Exception as e: st.error(e)
 
 elif secim == "Word -> PDF (LibreOffice)":
-    st.header(" Word -> PDF")
+    st.header("📝 Word -> PDF")
     up = st.file_uploader("Word", type="docx", key="w2p")
     if up and st.button("Çevir"):
         with st.spinner('LibreOffice...'):
@@ -270,7 +270,7 @@ elif secim == "Word -> PDF (LibreOffice)":
             except Exception as e: st.error(e)
 
 elif secim == "Word -> JPG (LibreOffice)":
-    st.header(" Word -> JPG")
+    st.header("🖼️ Word -> JPG")
     up = st.file_uploader("Word", type="docx", key="w2j")
     if up and st.button("Çevir"):
         with st.spinner('...'):
@@ -296,7 +296,7 @@ elif secim == "Word -> JPG (LibreOffice)":
             except Exception as e: st.error(e)
 
 elif secim == "PDF -> RTF (Zengin Metin)":
-    st.header(" PDF -> RTF")
+    st.header("📜 PDF -> RTF")
     up = st.file_uploader("PDF", type="pdf", key="p2rtf")
     if up and st.button("Çevir"):
         with st.spinner('...'):
@@ -315,7 +315,7 @@ elif secim == "PDF -> RTF (Zengin Metin)":
             except Exception as e: st.error(e)
 
 elif secim == "RTF -> PDF":
-    st.header(" RTF -> PDF")
+    st.header("📄 RTF -> PDF")
     up = st.file_uploader("RTF", type="rtf", key="r2p")
     if up and st.button("Çevir"):
         with st.spinner('...'):
@@ -332,7 +332,7 @@ elif secim == "RTF -> PDF":
             except Exception as e: st.error(e)
 
 elif secim == "JPG -> PDF (Resimden PDF)":
-    st.header(" JPG -> PDF")
+    st.header("🖼️ JPG -> PDF")
     ups = st.file_uploader("JPG", type=["jpg","png"], accept_multiple_files=True, key="j2p")
     if ups and st.button("Çevir"):
         try:
@@ -347,7 +347,7 @@ elif secim == "JPG -> PDF (Resimden PDF)":
         except Exception as e: st.error(e)
 
 elif secim == "JPG -> Word (OCR)":
-    st.header(" JPG -> Word")
+    st.header("📝 JPG -> Word")
     up = st.file_uploader("Resim", type=["jpg","png"], key="j2w")
     if up and st.button("Çevir"):
         try:
@@ -360,7 +360,7 @@ elif secim == "JPG -> Word (OCR)":
         except Exception as e: st.error(e)
 
 elif secim == "PowerPoint -> PDF (LibreOffice)":
-    st.header(" PPT -> PDF")
+    st.header("📊 PPT -> PDF")
     up = st.file_uploader("PPT", type="ppt", key="pp2p")
     if up and st.button("Çevir"):
         try:
@@ -374,7 +374,7 @@ elif secim == "PowerPoint -> PDF (LibreOffice)":
         except Exception as e: st.error(e)
 
 elif secim == "PDF -> PowerPoint (Sunum)":
-    st.header(" PDF -> PPTX")
+    st.header("🖥️ PDF -> PPTX")
     up = st.file_uploader("PDF", type="pdf", key="p2pp")
     if up and st.button("Çevir"):
         try:
@@ -391,7 +391,7 @@ elif secim == "PDF -> PowerPoint (Sunum)":
         except Exception as e: st.error(e)
 
 elif secim == "OCR: Taranmış PDF -> Word":
-    st.header(" OCR PDF")
+    st.header("👁️ OCR PDF")
     up = st.file_uploader("PDF", type="pdf", key="ocr")
     if up and st.button("Çevir"):
         try:
