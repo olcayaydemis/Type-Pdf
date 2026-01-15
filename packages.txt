@@ -1,0 +1,5 @@
+tesseract-ocr
+tesseract-ocr-tur
+libreoffice
+poppler-utils
+ghostscript
